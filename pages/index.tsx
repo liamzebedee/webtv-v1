@@ -4,28 +4,45 @@ import Head from 'next/head';
 import styles from '../styles/index.module.css';
 
 const TVSCRIPT_LANG = `tvScript`
-const characters = 'Narrator Rick Morty'.split(' ')
+const characters = 'Narrator Rick Morty Trump'.split(' ')
 const sampleScript = `Narrator: rick and morty go to the aus buildor meetup
-[Walk in]
-Rick: morty, I need you to take me to Surry Hills on Thursday night
-Morty: why rick? 
-Rick: because there's gonna be an airdrop morty. a massive fucking airdrop
-Morty: is it the $LYRA v2 token?
-Rick: even better Morty. it's $HAM`
+[Morty walks to Center Stage]
+Rick: morty
+Morty: rick
+Trump: tariffs
+
+// Narration
+// Narrator: rick and morty do something terrible with javascript
+
+// Dialogue
+// Rick: morty
+// Morty: rick
+// Trump: tariffs
+
+// Camera angles:
+// {Wide shot}
+// {Long shot, Rick and Morty}
+// {Close up, Rick}
+// {Close up, Morty}
+//
+// Stage directions:
+// [Morty walks to Center Stage]
+// [Rick and Morty enter the portal to Banana Land]
+`
 
 
-let VIDEO_SERVER = `http://0.0.0.0:9000`
-let GENERATION_SERVER = 'http://0.0.0.0:8512';
+let VIDEO_SERVER = `http://localhost:8512/outputs/`
+let GENERATION_SERVER = 'http://localhost:8512';
 
 // tailscale serve --bg --set-path /video-server http://127.0.0.1:9000 
 // tailscale serve --bg --set-path /generation-server http://127.0.0.1:8512
 // tailscale funnel 443 on 
 // if (process.env.NODE_ENV == 'production') {
-if(true) {
-    VIDEO_SERVER = `https://acmay.tail989c9.ts.net/video-server`
-    // GENERATION_SERVER = 'https://acmay.tail989c9.ts.net/generation-server'
-    GENERATION_SERVER = `https://spicy-bats-learn.loca.lt`
-}
+// if(true) {
+//     VIDEO_SERVER = `https://acmay.tail989c9.ts.net/video-server`
+//     // GENERATION_SERVER = 'https://acmay.tail989c9.ts.net/generation-server'
+//     GENERATION_SERVER = `https://spicy-bats-learn.loca.lt`
+// }
 
 console.log(`VIDEO_SERVER: ${VIDEO_SERVER}`)
 console.log(`GENERATION_SERVER: ${GENERATION_SERVER}`)
@@ -50,7 +67,13 @@ const App = () => {
         var language = {
             defaultToken: '',
             tokenizer: {
+                // NOTE: Order matters here.
                 root: [
+                    // Comments (e.g., /* comment */ or // comment)
+                    [/\b(comment)\b/, 'comment'],
+                    [/(\/\/[^\n]*)/, 'comment'],  // Single-line comment (//)
+                    [/(\/\*[\s\S]*?\*\/)/, 'comment'],  // Multi-line comment (/* */)
+
                     // Camera Direction
                     [/^\{[^}]*\}/, 'camera-direction'],
 
@@ -59,7 +82,7 @@ const App = () => {
 
                     // Dialogue
                     [/^([^:]+):/, 'character-name'],
-                    [/:(.*)$/, 'speech']
+                    [/:(.*)$/, 'speech'],
                 ]
             }
         };
@@ -74,7 +97,8 @@ const App = () => {
                 { token: 'character-name', foreground: '222222', fontStyle: 'bold' },
                 { token: 'speech', foreground: '008000' },
                 { token: 'stage-direction', foreground: '0000FF', fontStyle: 'italic' },
-                { token: 'camera-direction', foreground: 'A020F0', fontStyle: 'underline' }
+                { token: 'camera-direction', foreground: 'A020F0', fontStyle: 'underline' },
+                { token: 'comment', foreground: '888888' },
             ],
             colors: {
                 // you can also define editor colors here
@@ -123,13 +147,50 @@ const App = () => {
             roundedSelection: false,
             scrollBeyondLastLine: false,
         });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
+            const selection = editor.getSelection();
+            const model = editor.getModel();
+            const lines = model.getLinesContent();
+
+            let startLine = selection.selectionStartLineNumber;
+            let endLine = selection.selectionEndLineNumber;
+
+            let newLines = [...lines];
+            for (let i = startLine - 1; i < endLine; i++) {
+                // Check if the line starts with comment syntax
+                if (lines[i].trim().startsWith('//')) {
+                    // Uncomment: remove the '//' at the start
+                    newLines[i] = newLines[i].substring(2);
+                } else {
+                    // Comment: add '//' at the start
+                    newLines[i] = '//' + newLines[i];
+                }
+            }
+
+            // Apply changes to the model
+            model.setLinesContent(newLines);
+        });
     }
 
 
     async function clickGenerate() {
         console.log('click generate')
-        
-        const script = editorRef.current.getValue()
+
+
+        // Strip comments from script.
+        function parseScript(script) {
+            let s2 = "";
+            for (let line of script.split('\n')) {
+                if (line.trim().startsWith('//')) {
+                    continue;
+                }
+                s2 += line + '\n';
+            }
+            return s2;
+        }
+
+        const script = parseScript(editorRef.current.getValue())
         setGenerateStatus('generating')
         
         // fetch this endpoint
@@ -159,7 +220,7 @@ const App = () => {
         const { sceneId } = data
 
         const fname = `${sceneId}.mp4.mp4`
-        const videoUrl = `${VIDEO_SERVER}/${fname}`
+        const videoUrl = `${VIDEO_SERVER}${fname}`
         console.log(`video url: ${videoUrl}`)
         setVideoSrc(videoUrl)
         setGenerateStatus(null)

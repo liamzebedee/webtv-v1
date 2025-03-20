@@ -1,7 +1,14 @@
+// This is spoken as on screen text
 Narrator: rick and morty go to the aus buildor meetup
-[Walk in]
-Rick: morty, I need you to take me to Surry Hills on Thursday night
-Morty: why rick? 
-Rick: because there's gonna be an airdrop morty. a massive fucking airdrop
-Morty: is it the $LYRA v2 token?
-Rick: even better Morty. it's $HAM
+// This is a camera angle.
+{Wide shot}
+// You can also do:
+// {Close up, Rick}
+// {Close up, Morty}
+//
+// There are also stage directions:
+// [Morty walks to Center Stage]
+[Morty walks to Center Stage]
+Rick: morty
+Morty: rick
+Trump: tariffs
